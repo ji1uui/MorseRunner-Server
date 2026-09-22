@@ -13,6 +13,10 @@ uses
   SysUtils, Classes, SndTypes, MorseTbl, Math;
 
 type
+  // Logical keying coordinates, before envelope smoothing; end is exclusive.
+  TKeyingEvent = procedure(const Kind: string; StartSample, EndSample: Int64;
+    MorseIndex: integer) of object;
+
   TKeyer = class
   private
     Morse: array[char] of string;
@@ -35,6 +39,7 @@ type
     Rate: integer;
     MorseMsg: string;
     TrueEnvelopeLen: integer;
+    OnKeyingEvent: TKeyingEvent; // nil preserves the original audio path
 
     constructor Create;
     function Encode(Txt: string): string;
@@ -155,6 +160,28 @@ function TKeyer.GetEnvelope: TSingleArray;
 var
   UnitCnt, Len, i, p: integer;
   SamplesInUnit: integer;
+  MarkEnd, LastMarkIndex, GapSpaces: integer;
+  GapKind: string;
+
+  procedure EmitGap;
+  begin
+    if (LastMarkIndex = 0) or (p <= MarkEnd) then Exit;
+    if GapSpaces = 0 then GapKind := 'intra_character_gap'
+    else if GapSpaces = 1 then GapKind := 'character_gap'
+    else GapKind := 'word_gap';
+    if Assigned(OnKeyingEvent) then
+      OnKeyingEvent(GapKind, MarkEnd, p, LastMarkIndex);
+  end;
+
+  procedure EmitMark(const Kind: string; Units: integer);
+  begin
+    EmitGap;
+    MarkEnd := p + Units * SamplesInUnit;
+    LastMarkIndex := i;
+    GapSpaces := 0;
+    if Assigned(OnKeyingEvent) then
+      OnKeyingEvent(Kind, p, MarkEnd, i);
+  end;
 
   procedure AddRampOn;
   begin
@@ -201,23 +228,30 @@ begin
 
   //fill buffer
   p := 0;
+  MarkEnd := 0;
+  LastMarkIndex := 0;
+  GapSpaces := 0;
   for i := 1 to Length(MorseMsg) do
     case MorseMsg[i] of
       '.': begin
+        EmitMark('dit', 1);
         AddRampOn;
         AddOn(1);
         AddRampOff;
         AddOff(1);
       end;
       '-': begin
+        EmitMark('dah', 3);
         AddRampOn;
         AddOn(3);
         AddRampOff;
         AddOff(1);
       end;
-      ' ': AddOff(2);
+      ' ': begin AddOff(2); Inc(GapSpaces); end;
       '~': AddOff(1);
     end;
+  if Assigned(OnKeyingEvent) and (LastMarkIndex <> 0) then
+    OnKeyingEvent('trailing_gap', MarkEnd, p, LastMarkIndex);
 end;
 
 
