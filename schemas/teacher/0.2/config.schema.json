@@ -1,0 +1,8 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"export_teacher input configuration",
+  "allOf":[
+    {"$ref":"dataset.schema.json#/$defs/config"},
+    {"properties":{"timing_profile":{"const":"standard_v1"}}}
+  ]
+}

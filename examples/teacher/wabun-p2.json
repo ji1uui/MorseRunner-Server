@@ -1,0 +1,14 @@
+{
+  "schema_version": "0.3",
+  "mode": "mixed",
+  "timing_profile": "standard_v2",
+  "text": "CQ {DO}ガパこんにちは、よろしく{SN} DE JA1ABC {AR}",
+  "wpm": 17.321,
+  "wpm_end": 20.000,
+  "gap_scale_milli": 1200,
+  "jitter_milli": 30,
+  "seed": 20260924,
+  "pitch_hz": 700,
+  "amplitude": 12000,
+  "chunk_seconds": 60
+}

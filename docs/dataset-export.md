@@ -49,6 +49,23 @@ decay extends into the following gap. These are not measured audible edges.
 Padding has no symbol labels and must not be treated as another word.
 CTC blank is not a recorded physical gap event.
 
+## Schema 0.2 filename format (implemented by a separate CLI)
+
+The current schema 0.1 exporter still writes `received.wav`. The schema 0.2
+format is `cw_<session_code>_<role>_<part>.wav`: a lossless 26-character
+lowercase Base32 encoding of the session UUID, an audio role (`r` for final
+audio, `s01` etc. for station stems, `n` for noise), and a six-digit part
+number starting at `000001`. Final-audio names are 42 characters including
+the extension. UUID byte order, examples, manifest references, path-length
+checks and collision handling are specified in
+[the Japanese requirements, section 5.1.1](architecture/teacher-specification-ja.md).
+
+The separate `export_teacher` CLI implements final audio (`r`) for a single
+station. See [P1 usage and verification](teacher-p1.md). Consumers of schema
+0.2 read audio paths from the manifest; schema 0.1 datasets retain their
+original filenames and can be migrated explicitly with `migrate_dataset`.
+Station-stem and noise-file roles remain future work.
+
 ## Preserve legacy timing, do not certify it as ITU timing
 
 For U=round(1.2*rate/WPM) and ramp length R, the existing keyer uses a
@@ -87,6 +104,10 @@ GUI audio playback, Linux/macOS builds and long-running real-time behavior
 have NOT been verified.
 
 ## Integration next
+
+The Windows Teacher generator now also emits schema 0.3 for international and Wabun
+code, composite signals, speed changes, and validated batches. See
+[Teacher P2](teacher-p2.md) for the current workflow and contract.
 
 `Station.SendText -> Keyer.Encode -> Station.SendMorse -> Keyer.Envelope`
 creates station envelopes; `Contest.GetAudio` (inspect exact caller on

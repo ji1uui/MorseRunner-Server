@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MorseRunner Teacher 0.3 P2 contracts",
+  "description": "Select a $defs entry for each file/JSONL row. Cross-file references, exact PCM, hashes, timing, UUID/Base32 equivalence and supported profiles are also checked by validate_dataset.",
+  "$ref": "#/$defs/manifest",
+  "$defs": {
+    "uuid": {"type":"string","pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},
+    "hash": {"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "sample": {"type":"integer","minimum":0,"maximum":9223372036854775807},
+    "profile": {"const":"standard_v2"},
+    "config": {
+      "type":"object","additionalProperties":false,
+      "required":["schema_version","mode","timing_profile","text","wpm","pitch_hz","amplitude","chunk_seconds"],
+      "properties":{
+        "schema_version":{"const":"0.3"},"mode":{"enum":["international","wabun","mixed"]},
+        "timing_profile":{"$ref":"#/$defs/profile"},
+        "text":{"type":"string","minLength":1,"maxLength":65536},
+        "wpm":{"type":"number","minimum":5,"maximum":60,"multipleOf":0.001},
+        "wpm_end":{"type":"number","minimum":5,"maximum":60,"multipleOf":0.001},
+        "gap_scale_milli":{"type":"integer","minimum":1000,"maximum":3000},
+        "jitter_milli":{"type":"integer","minimum":0,"maximum":100},
+        "seed":{"type":"integer","minimum":1,"maximum":2147483647},
+        "pitch_hz":{"type":"integer","minimum":200,"maximum":1200},
+        "amplitude":{"type":"integer","minimum":1,"maximum":30000},
+        "chunk_seconds":{"type":"integer","minimum":1,"maximum":3600}
+      },
+      "allOf":[
+        {"if":{"properties":{"timing_profile":{"const":"standard_v2"}}},"then":{"required":["wpm_end","gap_scale_milli","jitter_milli","seed"]},"else":{"not":{"anyOf":[{"required":["wpm_end"]},{"required":["gap_scale_milli"]},{"required":["jitter_milli"]},{"required":["seed"]}]}}},
+        {"if":{"properties":{"timing_profile":{"const":"standard_v1"}}},"then":{"properties":{"mode":{"const":"international"},"text":{"pattern":"^[A-Z0-9/.,?=]+( [A-Z0-9/.,?=]+)*$"}}}},
+        {"if":{"properties":{"timing_profile":{"const":"upstream_keyer_legacy"}}},"then":{"properties":{"mode":{"const":"international"},"text":{"maxLength":256,"pattern":"^[A-Z0-9/.,?=]+( +[A-Z0-9/.,?=]+)*$"},"wpm":{"type":"integer"},"amplitude":{"const":12000},"chunk_seconds":{"const":3600}}}}
+      ]
+    },
+    "base_record": {
+      "type":"object","required":["schema_version","session_id","station_id","message_id"],
+      "properties":{"schema_version":{"const":"0.3"},"session_id":{"$ref":"#/$defs/uuid"},"station_id":{"const":"st01"},"message_id":{"const":"m001"}}
+    },
+    "symbol": {
+      "allOf":[{"$ref":"#/$defs/base_record"}],
+      "required":["event_id","token_id","kind","start_sample","end_sample","label_source"],
+      "properties":{
+        "event_id":{"type":"string","pattern":"^e(0|[1-9][0-9]*)$"},
+        "token_id":{"type":["string","null"],"pattern":"^t(0|[1-9][0-9]*)$"},
+        "kind":{"enum":["dit","dah","intra_character_gap","character_gap","word_gap","trailing_gap"]},
+        "start_sample":{"$ref":"#/$defs/sample"},"end_sample":{"$ref":"#/$defs/sample"},"label_source":{"const":"synthetic_exact"}
+      }
+    },
+    "token": {
+      "allOf":[{"$ref":"#/$defs/base_record"}],
+      "required":["token_id","token_index","source_token_index","mode","token_type","emitted_value","morse_pattern","event_ids","start_sample","end_sample","render_status"],
+      "properties":{
+        "token_id":{"type":"string","pattern":"^t(0|[1-9][0-9]*)$"},
+        "token_index":{"$ref":"#/$defs/sample"},"source_token_index":{"$ref":"#/$defs/sample"},
+        "mode":{"enum":["international","wabun"]},"token_type":{"enum":["character","digit","punctuation","diacritic","prosign","undefined"]},
+        "emitted_value":{"type":"string","minLength":1,"maxLength":32},
+        "morse_pattern":{"type":"string","pattern":"^[.-]{1,8}$"},
+        "event_ids":{"type":"array","minItems":1,"uniqueItems":true,"items":{"type":"string","pattern":"^e(0|[1-9][0-9]*)$"}},
+        "start_sample":{"$ref":"#/$defs/sample"},"end_sample":{"$ref":"#/$defs/sample"},"render_status":{"const":"complete"}
+      }
+    },
+    "station": {
+      "type":"object","required":["schema_version","session_id","station_id","role","mode","pitch_hz","wpm_equivalent","amplitude"],
+      "properties":{
+        "schema_version":{"const":"0.3"},"session_id":{"$ref":"#/$defs/uuid"},"station_id":{"const":"st01"},"role":{"const":"target"},"mode":{"enum":["international","wabun","mixed"]},
+        "pitch_hz":{"type":"integer","minimum":200,"maximum":1200},"wpm_equivalent":{"type":"number","minimum":5,"maximum":60},"amplitude":{"type":"integer","minimum":1,"maximum":30000}
+      }
+    },
+    "message": {
+      "allOf":[{"$ref":"#/$defs/base_record"}],
+      "required":["mode","source_text","emitted_text","render_status","start_sample","end_sample","symbol_table_id"],
+      "properties":{
+        "mode":{"enum":["international","wabun","mixed"]},"source_text":{"type":"string"},"emitted_text":{"type":"string"},"render_status":{"const":"complete"},
+        "start_sample":{"const":0},"end_sample":{"$ref":"#/$defs/sample"},"symbol_table_id":{"const":"international_wabun_v2"}
+      }
+    },
+    "condition": false,
+    "file": {
+      "type":"object","required":["path","byte_count","sha256"],
+      "properties":{
+        "path":{"type":"string","maxLength":64,"pattern":"^(cw_[a-z2-7]{26}_r_[0-9]{6}\\.wav|symbols\\.jsonl|tokens\\.jsonl|stations\\.jsonl|messages\\.jsonl|conditions\\.jsonl|config\\.json|symbol_table\\.txt|validation\\.json)$"},
+        "byte_count":{"$ref":"#/$defs/sample"},"sha256":{"$ref":"#/$defs/hash"},
+        "role":{"const":"r"},"station_id":{"type":"null"},"part":{"type":"integer","minimum":1,"maximum":999999},
+        "global_start_sample":{"$ref":"#/$defs/sample"},"sample_count":{"$ref":"#/$defs/sample"}
+      },
+      "allOf":[{"if":{"properties":{"path":{"pattern":"\\.wav$"}}},"then":{"required":["role","station_id","part","global_start_sample","sample_count"]}}]
+    },
+    "validation": {
+      "type":"object","required":["schema_version","session_id","passed","scope","validator_version","manifest_hash_included"],
+      "properties":{"schema_version":{"const":"0.3"},"session_id":{"$ref":"#/$defs/uuid"},"passed":{"const":true},"scope":{"const":"config_table_records_and_reconstructed_pcm"},"validator_version":{"const":"teacher-0.3-p2"},"manifest_hash_included":{"const":false}}
+    },
+    "migration": {
+      "type":"object","required":["source_schema","source_manifest_sha256","source_wav_sha256","original_provenance","note"],
+      "properties":{"source_schema":{"const":"0.1"},"source_manifest_sha256":{"$ref":"#/$defs/hash"},"source_wav_sha256":{"$ref":"#/$defs/hash"},"original_provenance":{"const":"unknown"},"note":{"type":"string"}}
+    },
+    "manifest": {
+      "type":"object",
+      "required":["schema_version","complete","session_id","session_code","pipeline","sample_rate_hz","channels","sample_format","session_sample_count","label_end_sample","timing_profile","coordinates","label_source","symbol_table_id","symbol_table_sha256","symbol_table_source","speed_basis","dot_duration_ms","wpm_equivalent","generator_version","dropped_samples","writer_overruns","validation_file","rng_algorithm","seed","rng_reason","corpus_id","corpus_sha256","corpus_reason","effects","config","envelope","ramp_samples","files","config_sha256","created_at_utc","generator_binary_sha256","compiler_version","os","cpu_arch","source_commit","source_dirty","provenance_kind"],
+      "properties":{
+        "schema_version":{"const":"0.3"},"complete":{"const":true},"session_id":{"$ref":"#/$defs/uuid"},"session_code":{"type":"string","pattern":"^[a-z2-7]{25}[aeimquy4]$"},
+        "pipeline":{"const":"keyer_only_no_receiver_effects"},"sample_rate_hz":{"const":22050},"channels":{"const":1},"sample_format":{"const":"pcm_s16le"},
+        "session_sample_count":{"$ref":"#/$defs/sample"},"label_end_sample":{"$ref":"#/$defs/sample"},"timing_profile":{"$ref":"#/$defs/profile"},
+        "coordinates":{"const":"zero_based_half_open_logical_keying"},"label_source":{"const":"synthetic_exact"},"symbol_table_id":{"const":"international_wabun_v2"},"symbol_table_sha256":{"$ref":"#/$defs/hash"},
+        "symbol_table_source":{"type":"object","additionalProperties":false,"required":["international","wabun"],"properties":{"international":{"const":"ITU-R M.1677-1 (10/2009)"},"wabun":{"const":"Japanese Radio Station Operation Regulations Annex 1, revision 325M50080000017_20260324_508M60000008028"}}},
+        "speed_basis":{"const":"PARIS_50_units"},"dot_duration_ms":{"type":"number","minimum":20,"maximum":240},"wpm_equivalent":{"type":"number","minimum":5,"maximum":60},
+        "generator_version":{"const":"teacher-0.3-p2"},"dropped_samples":{"const":0},"writer_overruns":{"const":0},"validation_file":{"const":"validation.json"},
+        "rng_algorithm":{"type":["string","null"],"enum":["xorshift32_v1",null]},"seed":{"type":["integer","null"]},"rng_reason":{"type":"string"},"corpus_id":{"type":"null"},"corpus_sha256":{"type":"null"},"corpus_reason":{"type":"string"},
+        "effects":{"type":"array","maxItems":0},"config":{"$ref":"#/$defs/config"},"envelope":{"const":"raised_cosine_attack_at_keydown_release_at_keyup"},"ramp_samples":{"type":"integer","minimum":1},
+        "files":{"type":"array","minItems":9,"items":{"$ref":"#/$defs/file"}},"config_sha256":{"$ref":"#/$defs/hash"},
+        "created_at_utc":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+        "generator_binary_sha256":{"$ref":"#/$defs/hash"},"compiler_version":{"type":"string","minLength":1},"os":{"type":"string","minLength":1},"cpu_arch":{"type":"string","minLength":1},
+        "source_commit":{"type":["string","null"],"pattern":"^[0-9a-f]{40}$"},"source_dirty":{"type":["boolean","null"]},"source_reason":{"type":"string","minLength":1},
+        "provenance_kind":{"const":"generated"},"migration":{"$ref":"#/$defs/migration"}
+      },
+      "allOf":[
+        {"if":{"properties":{"source_commit":{"type":"null"}}},"then":{"required":["source_reason"],"properties":{"source_dirty":{"type":"null"}}},"else":{"properties":{"source_dirty":{"type":"boolean"}}}},
+        {"not":{"required":["migration"]}},
+        {"properties":{"provenance_kind":{"const":"generated"}}}
+      ]
+    }
+  }
+}

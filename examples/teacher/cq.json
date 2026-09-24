@@ -1,0 +1,10 @@
+{
+  "schema_version": "0.2",
+  "mode": "international",
+  "timing_profile": "standard_v1",
+  "text": "CQ CQ DE JI1UUI K",
+  "wpm": 20,
+  "pitch_hz": 700,
+  "amplitude": 12000,
+  "chunk_seconds": 60
+}

@@ -1,0 +1,9 @@
+{
+  "schema_version": "teacher-corpus-1",
+  "items": [
+    {"group_id":"cq-001","mode":"international","category":"cq","text":"CQ CQ DE JA1ABC {AR}"},
+    {"group_id":"qso-001","mode":"international","category":"qso","text":"UR RST 5NN QTH TOKYO {SK}"},
+    {"group_id":"wabun-001","mode":"wabun","category":"greeting","text":"こんにちは、よろしく"},
+    {"group_id":"wabun-002","mode":"wabun","category":"practice","text":"ガパヰヱー おはよう"}
+  ]
+}
